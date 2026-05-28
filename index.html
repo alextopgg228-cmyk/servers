@@ -14,6 +14,59 @@
     <script defer src="./app.js"></script>
   </head>
   <body>
+    <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
+      <div class="auth-panel">
+        <div class="auth-copy">
+          <span class="brand-mark">SC</span>
+          <p class="eyebrow">Авторизация</p>
+          <h1 id="authTitle">Вход в систему сервисного центра</h1>
+          <p>
+            Выберите роль и войдите в личный кабинет. На GitHub Pages это демонстрационный вход
+            без серверной проверки паролей.
+          </p>
+        </div>
+
+        <form class="auth-form" id="authForm">
+          <div class="role-picker" role="group" aria-label="Роль пользователя">
+            <button class="role-card is-selected" type="button" data-login-role="admin">
+              <i data-lucide="shield-check"></i>
+              <strong>Админ</strong>
+              <small>Полный доступ</small>
+            </button>
+            <button class="role-card" type="button" data-login-role="worker">
+              <i data-lucide="wrench"></i>
+              <strong>Работник</strong>
+              <small>Заказы и справочники</small>
+            </button>
+            <button class="role-card" type="button" data-login-role="customer">
+              <i data-lucide="user-round"></i>
+              <strong>Покупатель</strong>
+              <small>Проверка ремонта</small>
+            </button>
+          </div>
+
+          <label>
+            Логин
+            <input id="loginInput" type="text" autocomplete="username" required>
+          </label>
+          <label>
+            Пароль
+            <input id="passwordInput" type="password" autocomplete="current-password" required>
+          </label>
+          <button class="primary-button" type="submit">
+            <i data-lucide="log-in"></i>
+            <span>Войти</span>
+          </button>
+
+          <div class="demo-credentials" aria-label="Демо-доступы">
+            <span>admin / admin123</span>
+            <span>worker / worker123</span>
+            <span>customer / customer123</span>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#dashboard" aria-label="Service Center">
@@ -24,18 +77,25 @@
           </span>
         </a>
 
-        <label class="global-search">
+        <label class="global-search" data-roles="admin,worker">
           <i data-lucide="search"></i>
           <input id="globalSearch" type="search" placeholder="Поиск по клиенту, серийному номеру, модели">
         </label>
 
         <div class="top-actions">
-          <button class="icon-text-button" id="exportData" type="button">
+          <span class="session-chip" id="sessionChip">
+            <i data-lucide="user-check"></i>
+            <span id="sessionRole">Гость</span>
+          </span>
+          <button class="icon-text-button" id="exportData" type="button" data-roles="admin">
             <i data-lucide="download"></i>
             <span>Экспорт</span>
           </button>
-          <button class="icon-button" id="resetData" type="button" aria-label="Сбросить локальные изменения">
+          <button class="icon-button" id="resetData" type="button" aria-label="Сбросить локальные изменения" data-roles="admin">
             <i data-lucide="rotate-ccw"></i>
+          </button>
+          <button class="icon-button" id="logoutButton" type="button" aria-label="Выйти из аккаунта">
+            <i data-lucide="log-out"></i>
           </button>
         </div>
       </header>
@@ -76,6 +136,10 @@
         <button class="view-tab" type="button" data-view="database">
           <i data-lucide="network"></i>
           <span>База</span>
+        </button>
+        <button class="view-tab" type="button" data-view="customer">
+          <i data-lucide="search-check"></i>
+          <span>Мой ремонт</span>
         </button>
       </nav>
 
@@ -156,7 +220,7 @@
               </div>
             </section>
 
-            <aside class="surface-panel form-panel">
+            <aside class="surface-panel form-panel" data-roles="admin,worker">
               <div class="panel-heading">
                 <h3>Новый заказ</h3>
               </div>
@@ -211,6 +275,33 @@
                 </button>
               </form>
             </aside>
+          </div>
+        </section>
+
+        <section class="app-view" id="customerView" data-view-panel="customer">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Личный кабинет</p>
+              <h2>Проверка статуса ремонта</h2>
+            </div>
+          </div>
+          <div class="customer-layout">
+            <section class="surface-panel customer-lookup">
+              <div class="panel-heading">
+                <h3>Найти заказ</h3>
+              </div>
+              <label>
+                ФИО клиента или серийный номер
+                <input id="customerLookup" type="search" placeholder="Например: SN123456789">
+              </label>
+            </section>
+            <section class="surface-panel">
+              <div class="panel-heading">
+                <h3>Результат</h3>
+                <span class="result-counter" id="customerCounter"></span>
+              </div>
+              <div id="customerOrders" class="customer-orders"></div>
+            </section>
           </div>
         </section>
 

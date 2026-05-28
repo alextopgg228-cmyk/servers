@@ -31,6 +31,18 @@ body {
   line-height: 1.5;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+body:not(.is-authenticated) .app-shell {
+  display: none;
+}
+
+body.is-authenticated .auth-screen {
+  display: none;
+}
+
 button,
 input,
 select {
@@ -44,6 +56,126 @@ button {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(rgba(246, 247, 242, 0.88), rgba(246, 247, 242, 0.96)),
+    url("./assets/service-bench.png") center / cover;
+}
+
+.auth-panel {
+  display: grid;
+  width: min(980px, 100%);
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+  gap: 22px;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.auth-copy,
+.auth-form {
+  padding: 28px;
+}
+
+.auth-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--line);
+}
+
+.auth-copy .brand-mark {
+  margin-bottom: 18px;
+}
+
+.auth-copy h1 {
+  font-size: clamp(32px, 4vw, 48px);
+}
+
+.auth-copy p:not(.eyebrow) {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form label,
+.customer-lookup label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.auth-form input,
+.customer-lookup input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 0 12px;
+  outline: none;
+}
+
+.role-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.role-card {
+  display: grid;
+  min-height: 116px;
+  align-content: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf9;
+  color: var(--text);
+  text-align: left;
+}
+
+.role-card svg {
+  width: 22px;
+  height: 22px;
+  color: var(--teal);
+}
+
+.role-card small {
+  color: var(--muted);
+}
+
+.role-card.is-selected {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.demo-credentials {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf9;
+  color: var(--muted);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
 }
 
 .app-shell {
@@ -132,7 +264,26 @@ a {
 }
 
 .top-actions {
+  flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.session-chip {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--graphite);
+  font-weight: 800;
+}
+
+.session-chip svg {
+  width: 18px;
+  color: var(--teal);
 }
 
 .icon-button,
@@ -302,7 +453,7 @@ h3 {
 
 .view-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin: 20px 0 22px;
 }
@@ -389,7 +540,8 @@ td small,
 
 .dashboard-grid,
 .orders-layout,
-.database-layout {
+.database-layout,
+.customer-layout {
   display: grid;
   gap: 16px;
   margin-top: 16px;
@@ -406,6 +558,11 @@ td small,
 
 .database-layout {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.7fr);
+}
+
+.customer-layout {
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items: start;
 }
 
 .surface-panel {
@@ -650,6 +807,53 @@ tbody tr:hover {
   color: var(--teal);
 }
 
+.customer-orders {
+  display: grid;
+  gap: 12px;
+}
+
+.customer-order-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.customer-order-card h3 {
+  margin-top: 8px;
+  color: var(--teal);
+}
+
+.customer-order-card p {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.customer-order-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.customer-order-card div {
+  min-width: 0;
+}
+
+.customer-order-card dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.customer-order-card dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+}
+
 .deploy-panel {
   justify-content: space-between;
   margin-top: 16px;
@@ -706,13 +910,23 @@ code {
   .overview-band,
   .dashboard-grid,
   .orders-layout,
-  .database-layout {
+  .database-layout,
+  .customer-layout {
     grid-template-columns: 1fr;
   }
 
   .stats-grid,
   .reference-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auth-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-copy {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
   }
 
   .form-panel {
@@ -749,6 +963,11 @@ code {
 
   .view-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .role-picker,
+  .customer-order-card dl {
+    grid-template-columns: 1fr;
   }
 
   .stats-grid,

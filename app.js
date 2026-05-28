@@ -1,7 +1,34 @@
 const STORAGE_KEY = "service-center-orders-v1";
+const AUTH_STORAGE_KEY = "service-center-session-v1";
+
+const roles = {
+  admin: {
+    login: "admin",
+    password: "admin123",
+    label: "Админ",
+    startView: "dashboard",
+    views: ["dashboard", "orders", "references", "database"],
+  },
+  worker: {
+    login: "worker",
+    password: "worker123",
+    label: "Работник",
+    startView: "orders",
+    views: ["dashboard", "orders", "references"],
+  },
+  customer: {
+    login: "customer",
+    password: "customer123",
+    label: "Покупатель",
+    startView: "customer",
+    views: ["customer"],
+  },
+};
 
 const data = window.serviceCenterData;
 let orders = loadOrders();
+let selectedLoginRole = "admin";
+let currentUser = loadSession();
 
 const state = {
   view: "dashboard",
@@ -10,6 +37,7 @@ const state = {
   store: "all",
   model: "all",
   warranty: "all",
+  customerSearch: "",
 };
 
 const moneyFormatter = new Intl.NumberFormat("ru-RU", {
@@ -34,18 +62,103 @@ const lookups = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  initAuthForm();
   applyInitialHash();
   hydrateControls();
   bindEvents();
+  applySessionState();
   render();
   refreshIcons();
 });
 
 function applyInitialHash() {
   const hash = window.location.hash.replace("#", "");
-  if (["dashboard", "orders", "references", "database"].includes(hash)) {
+  if (["dashboard", "orders", "references", "database", "customer"].includes(hash)) {
     state.view = hash;
   }
+}
+
+function initAuthForm() {
+  setSelectedLoginRole(selectedLoginRole);
+
+  document.querySelectorAll("[data-login-role]").forEach((button) => {
+    button.addEventListener("click", () => setSelectedLoginRole(button.dataset.loginRole));
+  });
+
+  document.querySelector("#authForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    login();
+  });
+}
+
+function setSelectedLoginRole(role) {
+  selectedLoginRole = role;
+  const config = roles[role];
+  document.querySelectorAll("[data-login-role]").forEach((button) => {
+    button.classList.toggle("is-selected", button.dataset.loginRole === role);
+  });
+  document.querySelector("#loginInput").value = config.login;
+  document.querySelector("#passwordInput").value = config.password;
+}
+
+function login() {
+  const loginValue = document.querySelector("#loginInput").value.trim();
+  const passwordValue = document.querySelector("#passwordInput").value;
+  const config = roles[selectedLoginRole];
+
+  if (loginValue !== config.login || passwordValue !== config.password) {
+    showToast("Неверный логин или пароль для выбранной роли");
+    return;
+  }
+
+  currentUser = {
+    role: selectedLoginRole,
+    label: config.label,
+    login: config.login,
+  };
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+  state.view = config.startView;
+  window.location.hash = config.startView;
+  applySessionState();
+  render();
+  showToast(`Вход выполнен: ${config.label}`);
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  document.body.className = "";
+  state.view = "dashboard";
+  window.location.hash = "";
+  applySessionState();
+  showToast("Вы вышли из аккаунта");
+}
+
+function applySessionState() {
+  const isAuthenticated = Boolean(currentUser);
+  document.body.classList.toggle("is-authenticated", isAuthenticated);
+  document.body.classList.toggle("role-admin", currentUser?.role === "admin");
+  document.body.classList.toggle("role-worker", currentUser?.role === "worker");
+  document.body.classList.toggle("role-customer", currentUser?.role === "customer");
+  document.querySelector("#sessionRole").textContent = currentUser?.label || "Гость";
+  applyAccessRules();
+}
+
+function applyAccessRules() {
+  const availableViews = currentUser ? roles[currentUser.role].views : [];
+  if (currentUser && !availableViews.includes(state.view)) {
+    state.view = roles[currentUser.role].startView;
+    window.location.hash = state.view;
+  }
+
+  document.querySelectorAll(".view-tab").forEach((button) => {
+    button.hidden = !availableViews.includes(button.dataset.view);
+  });
+
+  document.querySelectorAll("[data-roles]").forEach((element) => {
+    const allowed = element.dataset.roles.split(",").map((role) => role.trim());
+    element.hidden = !currentUser || !allowed.includes(currentUser.role);
+  });
 }
 
 function hydrateControls() {
@@ -95,6 +208,11 @@ function bindEvents() {
     render();
   });
 
+  document.querySelector("#customerLookup").addEventListener("input", (event) => {
+    state.customerSearch = event.target.value.trim().toLowerCase();
+    renderCustomerView();
+  });
+
   document.querySelector("#storeFilter").addEventListener("change", (event) => {
     state.store = event.target.value;
     renderOrders();
@@ -123,6 +241,10 @@ function bindEvents() {
   document.querySelector("#ordersTable").addEventListener("click", (event) => {
     const button = event.target.closest("[data-delete-order]");
     if (!button) return;
+    if (!canDeleteOrders()) {
+      showToast("Удаление доступно только администратору");
+      return;
+    }
     const orderNumber = Number(button.dataset.deleteOrder);
     orders = orders.filter((order) => order.OrderNumber !== orderNumber);
     saveOrders();
@@ -139,9 +261,12 @@ function bindEvents() {
 
   document.querySelector("#exportData").addEventListener("click", exportData);
   document.querySelector("#resetData").addEventListener("click", resetData);
+  document.querySelector("#logoutButton").addEventListener("click", logout);
 }
 
 function render() {
+  applyAccessRules();
+
   document.querySelectorAll(".view-tab").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === state.view);
   });
@@ -154,10 +279,14 @@ function render() {
   renderOrders();
   renderReferences();
   renderDatabase();
+  renderCustomerView();
   refreshIcons();
 }
 
 function setView(view) {
+  if (currentUser && !roles[currentUser.role].views.includes(view)) {
+    view = roles[currentUser.role].startView;
+  }
   state.view = view;
   window.location.hash = view;
   render();
@@ -266,9 +395,13 @@ function renderOrders() {
             <small>${Number(order.WarrantyMark) ? "гарантия" : `${order.RepairWarrantyPeriod} дн.`}</small>
           </td>
           <td>
-            <button class="icon-button subtle" type="button" data-delete-order="${order.OrderNumber}" aria-label="Удалить заказ №${order.OrderNumber}">
-              <i data-lucide="trash-2"></i>
-            </button>
+            ${
+              canDeleteOrders()
+                ? `<button class="icon-button subtle" type="button" data-delete-order="${order.OrderNumber}" aria-label="Удалить заказ №${order.OrderNumber}">
+                    <i data-lucide="trash-2"></i>
+                  </button>`
+                : ""
+            }
           </td>
         </tr>
       `,
@@ -395,7 +528,90 @@ function renderDatabase() {
     .join("");
 }
 
+function renderCustomerView() {
+  const container = document.querySelector("#customerOrders");
+  const counter = document.querySelector("#customerCounter");
+  if (!container || !counter) return;
+
+  if (!state.customerSearch) {
+    counter.textContent = "";
+    container.innerHTML = `
+      <div class="empty-state">
+        Введите ФИО клиента или серийный номер заказа. Для примера можно использовать SN123456789.
+      </div>
+    `;
+    return;
+  }
+
+  const matches = orders
+    .map(enrichOrder)
+    .filter((order) =>
+      [order.CustomerFullName, order.SerialNumber]
+        .join(" ")
+        .toLowerCase()
+        .includes(state.customerSearch),
+    )
+    .sort((a, b) => b.OrderNumber - a.OrderNumber);
+
+  counter.textContent = matches.length ? `${matches.length} найдено` : "Ничего не найдено";
+
+  if (!matches.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        Заказ не найден. Проверьте ФИО или серийный номер.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = matches
+    .map((order) => {
+      const status = order.ReturnDate ? "Готов к выдаче" : "В ремонте";
+      return `
+        <article class="customer-order-card">
+          <div>
+            <span class="badge">№${order.OrderNumber}</span>
+            <h3>${safe(status)}</h3>
+            <p>${safe(order.modelLabel)} · ${safe(order.fault.Description)}</p>
+          </div>
+          <dl>
+            <div>
+              <dt>Клиент</dt>
+              <dd>${safe(order.CustomerFullName)}</dd>
+            </div>
+            <div>
+              <dt>Серийный номер</dt>
+              <dd>${safe(order.SerialNumber)}</dd>
+            </div>
+            <div>
+              <dt>Принят</dt>
+              <dd>${formatDate(order.OrderDate)}</dd>
+            </div>
+            <div>
+              <dt>Выдача</dt>
+              <dd>${order.ReturnDate ? formatDate(order.ReturnDate) : "дата уточняется"}</dd>
+            </div>
+            <div>
+              <dt>Магазин</dt>
+              <dd>${safe(order.store.StoreName)}</dd>
+            </div>
+            <div>
+              <dt>Стоимость</dt>
+              <dd>${formatMoney(order.TotalPrice)}</dd>
+            </div>
+          </dl>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function addOrder() {
+  if (!canManageOrders()) {
+    showToast("Добавление заказов доступно администратору и работнику");
+    return;
+  }
+
   const form = document.querySelector("#orderForm");
   const warranty = document.querySelector("#newWarranty").checked ? 1 : 0;
   const order = {
@@ -436,6 +652,11 @@ function updateEstimate() {
 }
 
 function exportData() {
+  if (currentUser?.role !== "admin") {
+    showToast("Экспорт доступен только администратору");
+    return;
+  }
+
   const blob = new Blob([JSON.stringify({ ...data, orders }, null, 2)], {
     type: "application/json;charset=utf-8",
   });
@@ -451,12 +672,25 @@ function exportData() {
 }
 
 function resetData() {
+  if (currentUser?.role !== "admin") {
+    showToast("Сброс данных доступен только администратору");
+    return;
+  }
+
   const confirmed = window.confirm("Сбросить добавленные и удаленные заказы в локальной копии?");
   if (!confirmed) return;
   localStorage.removeItem(STORAGE_KEY);
   orders = structuredClone(data.orders);
   render();
   showToast("Данные восстановлены из SQL-экспорта");
+}
+
+function canManageOrders() {
+  return ["admin", "worker"].includes(currentUser?.role);
+}
+
+function canDeleteOrders() {
+  return currentUser?.role === "admin";
 }
 
 function filteredOrders() {
@@ -583,6 +817,20 @@ function loadOrders() {
     return Array.isArray(parsed) ? parsed : structuredClone(data.orders);
   } catch {
     return structuredClone(data.orders);
+  }
+}
+
+function loadSession() {
+  const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!saved) return null;
+  try {
+    const session = JSON.parse(saved);
+    if (session?.role && roles[session.role]) {
+      return session;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
