@@ -8,10 +8,10 @@
       name="description"
       content="Статический сайт сервисного центра на данных MS SQL для публикации через GitHub Pages."
     >
-    <link rel="stylesheet" href="./styles.css?v=auth-roles-1">
+    <link rel="stylesheet" href="./styles.css?v=admin-db-only-1">
     <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script defer src="./data/service-center-data.js?v=auth-roles-1"></script>
-    <script defer src="./app.js?v=auth-roles-1"></script>
+    <script defer src="./data/service-center-data.js?v=admin-db-only-1"></script>
+    <script defer src="./app.js?v=admin-db-only-1"></script>
   </head>
   <body>
     <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
@@ -104,11 +104,14 @@
         <div class="overview-copy">
           <p class="eyebrow">Сервисный центр</p>
           <h1 id="overviewTitle">Учет ремонтов, заказов и справочников</h1>
-          <p>
+          <p data-roles="admin">
             Данные загружены из SQL-схемы: должности, сотрудники, модели техники, типы неисправностей,
             запчасти, магазины и заказы.
           </p>
-          <div class="status-row" aria-label="Источник данных">
+          <p data-roles="worker,customer">
+            Личный кабинет для работы с заказами, справочниками и проверкой статуса ремонта.
+          </p>
+          <div class="status-row" aria-label="Источник данных" data-roles="admin">
             <span><i data-lucide="database"></i> SQLQuery3.sql + SQLQuery4.sql</span>
             <span><i data-lucide="globe-2"></i> GitHub Pages ready</span>
           </div>
@@ -133,7 +136,7 @@
           <i data-lucide="folders"></i>
           <span>Справочники</span>
         </button>
-        <button class="view-tab" type="button" data-view="database">
+        <button class="view-tab" type="button" data-view="database" data-roles="admin">
           <i data-lucide="network"></i>
           <span>База</span>
         </button>
@@ -322,7 +325,7 @@
           <div id="referenceContent"></div>
         </section>
 
-        <section class="app-view" id="databaseView" data-view-panel="database">
+        <section class="app-view" id="databaseView" data-view-panel="database" data-roles="admin">
           <div class="section-heading">
             <div>
               <p class="eyebrow">Структура данных</p>
