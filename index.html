@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Center | Учет заказов</title>
+    <meta
+      name="description"
+      content="Статический сайт сервисного центра на данных MS SQL для публикации через GitHub Pages."
+    >
+    <link rel="stylesheet" href="./styles.css">
+    <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script defer src="./data/service-center-data.js"></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#dashboard" aria-label="Service Center">
+          <span class="brand-mark">SC</span>
+          <span>
+            <strong>Service Center</strong>
+            <small>323pr_Bakunovskiy_CENTR</small>
+          </span>
+        </a>
+
+        <label class="global-search">
+          <i data-lucide="search"></i>
+          <input id="globalSearch" type="search" placeholder="Поиск по клиенту, серийному номеру, модели">
+        </label>
+
+        <div class="top-actions">
+          <button class="icon-text-button" id="exportData" type="button">
+            <i data-lucide="download"></i>
+            <span>Экспорт</span>
+          </button>
+          <button class="icon-button" id="resetData" type="button" aria-label="Сбросить локальные изменения">
+            <i data-lucide="rotate-ccw"></i>
+          </button>
+        </div>
+      </header>
+
+      <section class="overview-band" aria-labelledby="overviewTitle">
+        <div class="overview-copy">
+          <p class="eyebrow">Сервисный центр</p>
+          <h1 id="overviewTitle">Учет ремонтов, заказов и справочников</h1>
+          <p>
+            Данные загружены из SQL-схемы: должности, сотрудники, модели техники, типы неисправностей,
+            запчасти, магазины и заказы.
+          </p>
+          <div class="status-row" aria-label="Источник данных">
+            <span><i data-lucide="database"></i> SQLQuery3.sql + SQLQuery4.sql</span>
+            <span><i data-lucide="globe-2"></i> GitHub Pages ready</span>
+          </div>
+        </div>
+        <img
+          class="overview-image"
+          src="./assets/service-bench.png"
+          alt="Рабочее место сервисного центра с ноутбуком и телефоном"
+        >
+      </section>
+
+      <nav class="view-tabs" aria-label="Разделы сайта">
+        <button class="view-tab is-active" type="button" data-view="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Панель</span>
+        </button>
+        <button class="view-tab" type="button" data-view="orders">
+          <i data-lucide="clipboard-list"></i>
+          <span>Заказы</span>
+        </button>
+        <button class="view-tab" type="button" data-view="references">
+          <i data-lucide="folders"></i>
+          <span>Справочники</span>
+        </button>
+        <button class="view-tab" type="button" data-view="database">
+          <i data-lucide="network"></i>
+          <span>База</span>
+        </button>
+      </nav>
+
+      <main>
+        <section class="app-view is-visible" id="dashboardView" data-view-panel="dashboard">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Оперативная сводка</p>
+              <h2>Панель управления</h2>
+            </div>
+          </div>
+          <div class="stats-grid" id="statsGrid"></div>
+          <div class="dashboard-grid">
+            <section class="surface-panel">
+              <div class="panel-heading">
+                <h3>Последние заказы</h3>
+                <button class="icon-text-button compact" type="button" data-jump-view="orders">
+                  <i data-lucide="arrow-right"></i>
+                  <span>Открыть</span>
+                </button>
+              </div>
+              <div id="recentOrders" class="recent-list"></div>
+            </section>
+            <section class="surface-panel">
+              <div class="panel-heading">
+                <h3>Нагрузка сотрудников</h3>
+              </div>
+              <div id="workloadList" class="workload-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="app-view" id="ordersView" data-view-panel="orders">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Журнал ремонтов</p>
+              <h2>Заказы</h2>
+            </div>
+            <span class="result-counter" id="orderCounter"></span>
+          </div>
+
+          <div class="orders-layout">
+            <section class="surface-panel table-panel">
+              <div class="filters-bar">
+                <label>
+                  Магазин
+                  <select id="storeFilter"></select>
+                </label>
+                <label>
+                  Модель
+                  <select id="modelFilter"></select>
+                </label>
+                <label>
+                  Гарантия
+                  <select id="warrantyFilter">
+                    <option value="all">Все</option>
+                    <option value="yes">Гарантийные</option>
+                    <option value="no">Платные</option>
+                  </select>
+                </label>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th>Клиент</th>
+                      <th>Техника</th>
+                      <th>Неисправность</th>
+                      <th>Исполнитель</th>
+                      <th>Даты</th>
+                      <th>Сумма</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="ordersTable"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="surface-panel form-panel">
+              <div class="panel-heading">
+                <h3>Новый заказ</h3>
+              </div>
+              <form id="orderForm" class="order-form">
+                <label>
+                  Клиент
+                  <input id="newCustomer" type="text" required placeholder="Фамилия Имя Отчество">
+                </label>
+                <label>
+                  Серийный номер
+                  <input id="newSerial" type="text" required placeholder="SN000000000">
+                </label>
+                <label>
+                  Неисправность
+                  <select id="newFault" required></select>
+                </label>
+                <label>
+                  Магазин
+                  <select id="newStore" required></select>
+                </label>
+                <label>
+                  Сотрудник
+                  <select id="newEmployee" required></select>
+                </label>
+                <div class="two-columns">
+                  <label>
+                    Принят
+                    <input id="newOrderDate" type="date" required>
+                  </label>
+                  <label>
+                    Возврат
+                    <input id="newReturnDate" type="date">
+                  </label>
+                </div>
+                <div class="two-columns">
+                  <label>
+                    Сумма, ₽
+                    <input id="newTotal" type="number" min="0" step="100" required>
+                  </label>
+                  <label>
+                    Гарантия, дней
+                    <input id="newWarrantyPeriod" type="number" min="0" step="30" value="90">
+                  </label>
+                </div>
+                <label class="check-row">
+                  <input id="newWarranty" type="checkbox">
+                  <span>Гарантийный ремонт</span>
+                </label>
+                <button class="primary-button" type="submit">
+                  <i data-lucide="plus"></i>
+                  <span>Добавить заказ</span>
+                </button>
+              </form>
+            </aside>
+          </div>
+        </section>
+
+        <section class="app-view" id="referencesView" data-view-panel="references">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Справочная информация</p>
+              <h2>Справочники базы</h2>
+            </div>
+          </div>
+          <div class="reference-tabs" id="referenceTabs">
+            <button class="mini-tab is-active" type="button" data-reference="models">Модели</button>
+            <button class="mini-tab" type="button" data-reference="faults">Неисправности</button>
+            <button class="mini-tab" type="button" data-reference="employees">Сотрудники</button>
+            <button class="mini-tab" type="button" data-reference="parts">Запчасти</button>
+            <button class="mini-tab" type="button" data-reference="stores">Магазины</button>
+          </div>
+          <div id="referenceContent"></div>
+        </section>
+
+        <section class="app-view" id="databaseView" data-view-panel="database">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Структура данных</p>
+              <h2>MS SQL база сервисного центра</h2>
+            </div>
+          </div>
+          <div class="database-layout">
+            <section class="surface-panel">
+              <div class="panel-heading">
+                <h3>Таблицы</h3>
+              </div>
+              <div class="schema-grid" id="schemaGrid"></div>
+            </section>
+            <section class="surface-panel">
+              <div class="panel-heading">
+                <h3>Связи</h3>
+              </div>
+              <ul class="relationship-list" id="relationshipList"></ul>
+            </section>
+          </div>
+          <section class="surface-panel deploy-panel">
+            <div>
+              <h3>Режим GitHub Pages</h3>
+              <p>
+                GitHub Pages размещает только статические файлы. Поэтому сайт использует экспорт данных
+                из MS SQL в JavaScript-файл, а исходные SQL-скрипты лежат в папке <code>database</code>.
+              </p>
+            </div>
+            <a class="icon-text-button" href="./database/schema.sql" download>
+              <i data-lucide="file-down"></i>
+              <span>schema.sql</span>
+            </a>
+            <a class="icon-text-button" href="./database/seed.sql" download>
+              <i data-lucide="file-down"></i>
+              <span>seed.sql</span>
+            </a>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
